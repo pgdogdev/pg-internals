@@ -4,6 +4,8 @@ mod configure;
 mod constants;
 #[path = "build/guc.rs"]
 mod guc;
+#[path = "build/guc_options.rs"]
+mod guc_options;
 
 fn main() {
     configure::build();

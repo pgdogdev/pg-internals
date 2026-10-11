@@ -145,6 +145,7 @@ name = "pg_internals"
 version = "0.1.0"
 dependencies = [
  "bindgen",
+ "clang-sys",
  "phf",
  "phf_codegen",
  "prettyplease",

@@ -45,6 +45,7 @@ pub fn parameters() -> BTreeMap<String, Fields> {
 
 pub fn build() {
     let entries = parameters();
+    let options = super::guc_options::parse(&entries);
     let output = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let constants = constants(
         &fs::read_to_string(output.join("constants.rs"))
@@ -55,7 +56,7 @@ pub fn build() {
     let mut included = 0;
     let mut omitted = 0;
     for (name, fields) in &entries {
-        match generate(fields, &constants) {
+        match generate(fields, &constants, &options) {
             Ok(value) => {
                 // phf_codegen accepts each value as Rust source text.
                 table.entry(name.as_str(), value.to_string());
@@ -79,7 +80,7 @@ pub fn build() {
         .expect("invalid Rust expression from phf_codegen");
     let generated: syn::File = syn::parse2(quote! {
         /// GUCs with resolved defaults and bounds, keyed by exact parameter name.
-        pub static GUCS: phf::Map<&'static str, Guc> = #table;
+        pub static GUC: phf::Map<&'static str, Guc> = #table;
     })
     .expect("invalid generated GUC syntax");
     fs::write(output.join("guc.rs"), prettyplease::unparse(&generated))
@@ -309,6 +310,7 @@ fn resolve(
 fn generate(
     fields: &Fields,
     constants: &BTreeMap<String, ConstantType>,
+    options: &BTreeMap<String, Vec<String>>,
 ) -> Result<TokenStream, String> {
     if fields.contains_key("ifdef") {
         return Err(format!("conditional entry ({})", fields["ifdef"]));
@@ -321,6 +323,11 @@ fn generate(
         resolve(kind, value, constants).map_err(|reason| format!("{field}: {reason}"))
     };
     let boot = resolve_field("boot_val")?;
+    let options = if kind == "enum" {
+        options[&fields["options"]].as_slice()
+    } else {
+        &[]
+    };
     let (min, max) = if matches!(kind.as_str(), "int" | "real") {
         let min = resolve_field("min")?;
         let max = resolve_field("max")?;
@@ -348,6 +355,7 @@ fn generate(
             boot_val: #boot,
             min: #min,
             max: #max,
+            options: &[#(#options),*],
         }
     })
 }
@@ -400,25 +408,30 @@ fn literal(kind: &str, value: &str) -> Option<TokenStream> {
             if value == "NULL" {
                 return Some(quote!(Value::Null));
             }
-            let inner = value.strip_prefix('"')?.strip_suffix('"')?;
-            let mut decoded = String::new();
-            let mut chars = inner.chars();
-            while let Some(ch) = chars.next() {
-                decoded.push(match ch {
-                    '"' => return None,
-                    '\\' => match chars.next()? {
-                        '"' => '"',
-                        '\\' => '\\',
-                        'n' => '\n',
-                        'r' => '\r',
-                        't' => '\t',
-                        _ => return None,
-                    },
-                    _ => ch,
-                });
-            }
+            let decoded = c_string_literal(value)?;
             Some(quote!(Value::String(#decoded)))
         }
         _ => None,
     }
+}
+
+pub fn c_string_literal(value: &str) -> Option<String> {
+    let inner = value.strip_prefix('"')?.strip_suffix('"')?;
+    let mut decoded = String::new();
+    let mut chars = inner.chars();
+    while let Some(ch) = chars.next() {
+        decoded.push(match ch {
+            '"' => return None,
+            '\\' => match chars.next()? {
+                '"' => '"',
+                '\\' => '\\',
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                _ => return None,
+            },
+            _ => ch,
+        });
+    }
+    Some(decoded)
 }

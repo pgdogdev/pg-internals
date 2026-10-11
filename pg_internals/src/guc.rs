@@ -42,6 +42,9 @@ pub struct Guc {
     pub boot_val: Value,
     pub min: Option<Value>,
     pub max: Option<Value>,
+    /// Accepted enum strings, including hidden aliases, for the configured build.
+    /// Empty for settings that are not enums.
+    pub options: &'static [&'static str],
 }
 
 include!(concat!(env!("OUT_DIR"), "/guc.rs"));
