@@ -1,7 +1,6 @@
 # Postgres internals
 
-This crate gives Rust access to whatever Postgres internals we need to make [PgDog](https://github.com/pgdogdev/pgdog) work. It's compiled against the latest commit in `master`, so
-only internals we can rely on are the ones that are backwards compatible. Thankfully, for Postgres, that's most of them.
+This crate gives Rust access to whatever Postgres internals we need to make [PgDog](https://github.com/pgdogdev/pgdog) work. It's compiled against a pinned commit from `master`, so only internals we can rely on are the ones that are backwards compatible. Thankfully, for Postgres, that's most of them.
 
 ## Features
 

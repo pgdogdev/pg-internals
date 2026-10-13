@@ -1,16 +1,16 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     env, fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Command,
 };
 
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-pub fn parameters() -> BTreeMap<String, Fields> {
+pub fn parameters(source: &Path) -> BTreeMap<String, Fields> {
     let root = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
-    let backend = root.join("../postgres/src/backend");
+    let backend = source.join("src/backend");
     let input = backend.join("utils/misc/guc_parameters.dat");
     let catalog = backend.join("catalog");
     let wrapper = root.join("build/guc.pl");
@@ -43,9 +43,9 @@ pub fn parameters() -> BTreeMap<String, Fields> {
     entries
 }
 
-pub fn build() {
-    let entries = parameters();
-    let options = super::guc_options::parse(&entries);
+pub fn build(source: &Path) {
+    let entries = parameters(source);
+    let options = super::guc_options::parse(source, &entries);
     let output = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let constants = constants(
         &fs::read_to_string(output.join("constants.rs"))

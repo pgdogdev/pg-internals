@@ -1,11 +1,11 @@
-use std::{env, fs, path::PathBuf, process::Command};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 /// Generate PostgreSQL's configuration headers using its default build options.
-pub fn build() {
-    let source = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap())
-        .join("../postgres")
-        .canonicalize()
-        .expect("cannot locate the PostgreSQL source tree");
+pub fn build(source: &Path) {
     let output = PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("postgres");
 
     for path in [

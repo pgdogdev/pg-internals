@@ -1,4 +1,9 @@
-use std::{collections::BTreeMap, env, fs, path::PathBuf, process::Command};
+use std::{
+    collections::BTreeMap,
+    env, fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use super::guc;
 
@@ -33,9 +38,8 @@ impl bindgen::callbacks::ParseCallbacks for ConstantNames {
     }
 }
 
-pub fn build() {
+pub fn build(source: &Path) {
     let root = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
-    let source = root.join("../postgres").canonicalize().unwrap();
     let output = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let postgres = output.join("postgres");
     let wrapper = root.join("build/constants.h");
@@ -72,7 +76,7 @@ pub fn build() {
         ("DBL_MAX".to_owned(), "real".to_owned()),
         ("SIZE_MAX".to_owned(), "size".to_owned()),
     ]);
-    for fields in guc::parameters().values() {
+    for fields in guc::parameters(source).values() {
         if fields.contains_key("ifdef") {
             continue;
         }

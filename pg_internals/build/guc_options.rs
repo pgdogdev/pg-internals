@@ -12,7 +12,7 @@ use clang_sys::*;
 use super::guc::Fields;
 
 /// Read enum strings from Clang's preprocessed C initializer ASTs.
-pub fn parse(entries: &BTreeMap<String, Fields>) -> BTreeMap<String, Vec<String>> {
+pub fn parse(source: &Path, entries: &BTreeMap<String, Fields>) -> BTreeMap<String, Vec<String>> {
     let references: BTreeMap<_, _> = entries
         .values()
         .filter(|fields| !fields.contains_key("ifdef"))
@@ -20,8 +20,6 @@ pub fn parse(entries: &BTreeMap<String, Fields>) -> BTreeMap<String, Vec<String>
         .map(|reference| (reference.clone(), table_reference(reference)))
         .collect();
     let wanted: BTreeSet<_> = references.values().map(|(name, _)| name.clone()).collect();
-    let root = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
-    let source = root.join("../postgres").canonicalize().unwrap();
     let output = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     // Use the same headers and feature definitions as the constants bindgen step.
     let mut arguments = vec![
