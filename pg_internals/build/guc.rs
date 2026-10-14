@@ -323,6 +323,25 @@ fn generate(
         resolve(kind, value, constants).map_err(|reason| format!("{field}: {reason}"))
     };
     let boot = resolve_field("boot_val")?;
+    // Only unit flags are needed by parse_int/parse_real. Other flags control
+    // backend behavior and are not part of numeric parsing.
+    let flags = without_comments(fields.get("flags").map(String::as_str).unwrap_or("0"));
+    let units: Vec<_> = flags
+        .split('|')
+        .map(str::trim)
+        .filter(|flag| flag.starts_with("GUC_UNIT_"))
+        .map(|flag| {
+            assert!(
+                matches!(constants.get(flag), Some(ConstantType::Int)),
+                "unknown GUC unit {flag}"
+            );
+            format_ident!("{flag}")
+        })
+        .collect();
+    assert!(units.len() <= 1, "multiple GUC base units");
+    let unit_flags = units
+        .first()
+        .map_or_else(|| quote!(0), |unit| quote!(crate::constants::#unit));
     let options = if kind == "enum" {
         options[&fields["options"]].as_slice()
     } else {
@@ -353,6 +372,7 @@ fn generate(
             short_desc: #short_desc,
             long_desc: #long_desc,
             boot_val: #boot,
+            unit_flags: #unit_flags,
             min: #min,
             max: #max,
             options: &[#(#options),*],

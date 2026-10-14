@@ -4,7 +4,10 @@
 //! unresolved constants, and unsupported C syntax are omitted. Names use
 //! PostgreSQL's original spelling and lookups are case-sensitive.
 
-/// A PostgreSQL configuration value resolved at compile time.
+mod parse;
+pub use parse::{parse_int, parse_real};
+
+/// A PostgreSQL configuration value.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Value {
     Bool(bool),
@@ -40,6 +43,8 @@ pub struct Guc {
     pub short_desc: &'static str,
     pub long_desc: Option<&'static str>,
     pub boot_val: Value,
+    /// PostgreSQL GUC_UNIT_* base-unit flag, or zero for a unitless setting.
+    pub unit_flags: u32,
     pub min: Option<Value>,
     pub max: Option<Value>,
     /// Accepted enum strings, including hidden aliases, for the configured build.
@@ -48,3 +53,18 @@ pub struct Guc {
 }
 
 include!(concat!(env!("OUT_DIR"), "/guc.rs"));
+
+impl Guc {
+    /// Parse a numeric value into this setting's base units using PostgreSQL.
+    ///
+    /// Returns None for malformed values, integer overflow, interior NUL bytes,
+    /// or a nonnumeric setting. This does not check min/max or backend hooks.
+    /// Real infinities can parse successfully and must be checked against bounds.
+    pub fn parse_numeric(&self, value: &str) -> Option<Value> {
+        match self.boot_val {
+            Value::Int(_) => parse_int(value, self.unit_flags).map(Value::Int),
+            Value::Real(_) => parse_real(value, self.unit_flags).map(Value::Real),
+            _ => None,
+        }
+    }
+}
