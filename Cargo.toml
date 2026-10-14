@@ -1,0 +1,3 @@
+[workspace]
+members = ["pg_internals", "xtask"]
+resolver = "3"

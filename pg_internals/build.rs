@@ -8,6 +8,8 @@ mod guc;
 mod guc_options;
 #[path = "build/guc_parse.rs"]
 mod guc_parse;
+#[path = "build/guc_sources.rs"]
+mod guc_sources;
 #[path = "build/source.rs"]
 mod source;
 

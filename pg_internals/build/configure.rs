@@ -38,9 +38,19 @@ pub fn build(source: &Path) {
         println!("cargo:rerun-if-env-changed={variable}");
     }
 
-    fs::create_dir_all(&output).expect("cannot create the PostgreSQL build directory");
+    run(source, &output);
+}
+
+/// Configure in a separate build directory, also used by the vendoring command.
+pub fn run(source: &Path, output: &Path) {
+    // Older builds generated backend headers here. They must not shadow the
+    // vendored headers, including after changing the pinned PostgreSQL revision.
+    if output.exists() {
+        fs::remove_dir_all(output).expect("cannot clear the PostgreSQL build directory");
+    }
+    fs::create_dir_all(output).expect("cannot create the PostgreSQL build directory");
     let mut configure = Command::new(source.join("configure"));
-    configure.current_dir(&output);
+    configure.current_dir(output);
     #[cfg(target_os = "macos")]
     homebrew_icu(&mut configure);
     let configured = configure.output().expect("cannot run PostgreSQL configure");

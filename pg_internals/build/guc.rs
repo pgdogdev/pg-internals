@@ -78,7 +78,11 @@ pub fn build(source: &Path) {
     }
     let table: syn::Expr = syn::parse_str(&table.build().to_string())
         .expect("invalid Rust expression from phf_codegen");
+    let names = entries.keys();
     let generated: syn::File = syn::parse2(quote! {
+        /// All names in PostgreSQL's catalog, including conditional settings and
+        /// entries whose defaults or bounds could not be extracted into GUC.
+        pub static GUC_NAMES: &[&str] = &[#(#names),*];
         /// GUCs with resolved defaults and bounds, keyed by exact parameter name.
         pub static GUC: phf::Map<&'static str, Guc> = #table;
     })

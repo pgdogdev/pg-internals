@@ -2,14 +2,16 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     env,
     ffi::{CStr, CString},
-    fs,
     path::{Path, PathBuf},
     ptr,
 };
 
 use clang_sys::*;
 
-use super::guc::Fields;
+use super::{
+    guc::Fields,
+    guc_sources::{select, table_reference},
+};
 
 /// Read enum strings from Clang's preprocessed C initializer ASTs.
 pub fn parse(source: &Path, entries: &BTreeMap<String, Fields>) -> BTreeMap<String, Vec<String>> {
@@ -44,16 +46,8 @@ pub fn parse(source: &Path, entries: &BTreeMap<String, Fields>) -> BTreeMap<Stri
         .collect();
 
     clang_sys::load().expect("cannot load libclang to read GUC enum options");
-    let mut files = Vec::new();
-    find_sources(&source.join("src/backend"), &mut files);
-    files.sort();
     let mut options = BTreeMap::new();
-    for file in files {
-        let text = fs::read_to_string(&file).expect("cannot read PostgreSQL C source");
-        // This only selects translation units. Clang locates and parses the arrays.
-        if !text.contains("config_enum_entry") || !wanted.iter().any(|name| text.contains(name)) {
-            continue;
-        }
+    for file in select(source, &wanted) {
         println!("cargo:rerun-if-changed={}", file.display());
         let unit = TranslationUnit::parse(&file, &arguments);
         // SAFETY: all cursors below are used before their translation unit is dropped.
@@ -112,50 +106,6 @@ pub fn parse(source: &Path, entries: &BTreeMap<String, Fields>) -> BTreeMap<Stri
             (reference, values[offset..].to_vec())
         })
         .collect()
-}
-
-fn table_reference(reference: &str) -> (String, usize) {
-    let expression: syn::Expr = syn::parse_str(reference)
-        .unwrap_or_else(|_| panic!("unsupported GUC enum table reference {reference}"));
-    let (table, offset) = match &expression {
-        syn::Expr::Binary(binary) if matches!(binary.op, syn::BinOp::Add(_)) => {
-            let syn::Expr::Lit(syn::ExprLit {
-                lit: syn::Lit::Int(offset),
-                ..
-            }) = binary.right.as_ref()
-            else {
-                panic!("unsupported GUC enum table offset {reference}");
-            };
-            (
-                binary.left.as_ref(),
-                offset.base10_parse().expect("invalid enum table offset"),
-            )
-        }
-        table => (table, 0),
-    };
-    let syn::Expr::Path(table) = table else {
-        panic!("unsupported GUC enum table reference {reference}");
-    };
-    (
-        table
-            .path
-            .get_ident()
-            .expect("invalid enum table name")
-            .to_string(),
-        offset,
-    )
-}
-
-fn find_sources(directory: &Path, files: &mut Vec<PathBuf>) {
-    for entry in fs::read_dir(directory).expect("cannot list PostgreSQL sources") {
-        let entry = entry.unwrap();
-        let kind = entry.file_type().unwrap();
-        if kind.is_dir() {
-            find_sources(&entry.path(), files);
-        } else if kind.is_file() && entry.path().extension().is_some_and(|ext| ext == "c") {
-            files.push(entry.path());
-        }
-    }
 }
 
 // These helpers are private: their cursors and strings always belong to a live TU.

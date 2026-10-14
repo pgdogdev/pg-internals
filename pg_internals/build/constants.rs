@@ -2,7 +2,6 @@ use std::{
     collections::BTreeMap,
     env, fs,
     path::{Path, PathBuf},
-    process::Command,
 };
 
 use super::guc;
@@ -44,30 +43,12 @@ pub fn build(source: &Path) {
     let postgres = output.join("postgres");
     let wrapper = root.join("build/constants.h");
 
-    // Backend headers also depend on generated catalog, node, and error headers.
+    // The vendored tree includes generated catalog, node, and error headers.
     for path in ["src/include", "src/backend", "src/Makefile.global.in"] {
         println!("cargo:rerun-if-changed={}", source.join(path).display());
     }
     println!("cargo:rerun-if-changed={}", wrapper.display());
     println!("cargo:rerun-if-env-changed=LIBCLANG_PATH");
-    let generated = Command::new("make")
-        .arg("-C")
-        .arg(postgres.join("src/backend"))
-        .arg("generated-headers")
-        .output()
-        .expect("cannot generate PostgreSQL headers: make is required");
-    let log = postgres.join("generated-headers.log");
-    let mut transcript = generated.stdout;
-    transcript.extend_from_slice(&generated.stderr);
-    fs::write(&log, transcript).expect("cannot write the header generation log");
-    assert!(
-        generated.status.success(),
-        "PostgreSQL header generation failed ({}). See {}.\n{}",
-        generated.status,
-        log.display(),
-        String::from_utf8_lossy(&generated.stderr)
-    );
-
     let macro_output = output.join("clang-macros");
     fs::create_dir_all(&macro_output).expect("cannot create the Clang macro directory");
     let mut aliases = BTreeMap::from([

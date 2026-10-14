@@ -41,3 +41,12 @@ fn enum_table_offsets_exclude_leading_options() {
     assert_eq!(minimum.options, &maximum.options[1..]);
     assert!(!minimum.options.is_empty());
 }
+
+#[test]
+fn catalog_names_include_settings_without_resolved_metadata() {
+    use pg_internals::guc::{GUC, GUC_NAMES};
+    assert!(GUC_NAMES.contains(&"min_dynamic_shared_memory"));
+    assert!(GUC_NAMES.contains(&"debug_deadlocks"));
+    assert!(!GUC_NAMES.contains(&"no_such_variable"));
+    assert!(GUC.keys().all(|name| GUC_NAMES.contains(name)));
+}

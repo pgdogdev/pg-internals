@@ -4,7 +4,9 @@
 //! unresolved constants, and unsupported C syntax are omitted. Names use
 //! PostgreSQL's original spelling and lookups are case-sensitive.
 
+mod datestyle;
 mod parse;
+pub use datestyle::{DateStyleError, DateStyleInput, normalize_datestyle};
 pub use parse::{parse_int, parse_real};
 
 /// A PostgreSQL configuration value.
