@@ -1,0 +1,15 @@
+# Rust's main-thread handle initialized by thread::scope is reported as a
+# 48-byte possible leak at process exit. Match only that initialization path
+# in this workload; other possible leaks and all definite/indirect leaks fail.
+# Wildcards accommodate Rust's mangled symbol names and compiler hashes.
+# See https://valgrind.org/docs/manual/mc-manual.html#mc-manual.suppfiles
+{
+   rust_main_thread_handle_from_memory_check_scope
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   ...
+   fun:*std*thread*current*init_current*
+   fun:*std*thread*scoped*scope*
+   fun:*memory_check*main*
+}
