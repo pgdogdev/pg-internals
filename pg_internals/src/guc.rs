@@ -45,6 +45,8 @@ pub struct Guc {
     pub boot_val: Value,
     /// PostgreSQL GUC_UNIT_* base-unit flag, or zero for a unitless setting.
     pub unit_flags: u32,
+    /// Whether PostgreSQL reports this setting via ParameterStatus (GUC_REPORT).
+    pub report: bool,
     pub min: Option<Value>,
     pub max: Option<Value>,
     /// Accepted enum strings, including hidden aliases, for the configured build.

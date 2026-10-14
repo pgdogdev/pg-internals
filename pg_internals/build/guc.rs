@@ -323,9 +323,9 @@ fn generate(
         resolve(kind, value, constants).map_err(|reason| format!("{field}: {reason}"))
     };
     let boot = resolve_field("boot_val")?;
-    // Only unit flags are needed by parse_int/parse_real. Other flags control
-    // backend behavior and are not part of numeric parsing.
     let flags = without_comments(fields.get("flags").map(String::as_str).unwrap_or("0"));
+    let report = flags.split('|').any(|flag| flag.trim() == "GUC_REPORT");
+    // Only unit flags are passed to parse_int/parse_real.
     let units: Vec<_> = flags
         .split('|')
         .map(str::trim)
@@ -373,6 +373,7 @@ fn generate(
             long_desc: #long_desc,
             boot_val: #boot,
             unit_flags: #unit_flags,
+            report: #report,
             min: #min,
             max: #max,
             options: &[#(#options),*],
