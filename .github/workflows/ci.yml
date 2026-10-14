@@ -26,6 +26,7 @@ jobs:
 
   test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -33,9 +34,20 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential clang libclang-dev bison flex pkg-config libicu-dev libreadline-dev zlib1g-dev
+          sudo apt-get install -y build-essential clang libclang-dev bison flex pkg-config libicu-dev libreadline-dev zlib1g-dev valgrind
       - name: Install cargo-nextest
         shell: bash
         run: curl -LsSf https://get.nexte.st/0.9/linux | tar zxf - -C "${CARGO_HOME:-$HOME/.cargo}/bin"
       - name: Test
         run: cargo nextest run --workspace --all-targets --locked
+      - name: Build memory check
+        run: cargo build --locked -p pg_internals --bin memory-check
+      - name: Check for memory errors and leaks
+        run: |
+          valgrind --tool=memcheck \
+            --leak-check=full \
+            --show-leak-kinds=all \
+            --errors-for-leak-kinds=definite,indirect,possible \
+            --track-origins=yes \
+            --error-exitcode=1 \
+            target/debug/memory-check 8 1000
