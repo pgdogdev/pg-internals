@@ -1,5 +1,9 @@
-/* Compile the upstream implementation directly. Rust's linker discards the
- * unused backend functions and data, retaining the parsers and unit tables.
- */
+/* The build script appends only the numeric parsers, their conversion helper,
+ * and unit tables from the pinned upstream guc.c. */
 #include "guc_parse.h"
-#include "utils/misc/guc.c"
+#include "postgres.h"
+
+#include <limits.h>
+#include <math.h>
+
+#include "utils/guc.h"

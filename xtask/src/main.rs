@@ -117,6 +117,8 @@ fn vendor() -> Result<()> {
     units.extend([
         root.join("pg_internals/build/constants.h"),
         root.join("pg_internals/build/guc_parse.c"),
+        // The build extracts parser definitions from this source at compile time.
+        source.join("src/backend/utils/misc/guc.c"),
     ]);
 
     let mut files = BTreeMap::new();
